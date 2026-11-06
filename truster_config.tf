@@ -209,14 +209,20 @@ variable "truster_config" {
   validation {
     condition = !(
       contains([for connector in values(var.truster_config.user_login_connectors) : connector.type], "email") ||
-      contains(["provider", "strict"], coalesce(try(var.truster_config.email.verification_mode, null), "disabled"))
+      try(var.truster_config.email.verification_mode, null) == "strict"
+    ) || try(var.truster_config.email.smtp != null, false)
+    error_message = "An email connector or strict verification requires email configuration with complete SMTP configuration."
+  }
+
+  validation {
+    condition = !(
+      contains([for connector in values(var.truster_config.user_login_connectors) : connector.type], "email") ||
+      try(var.truster_config.email.smtp != null && coalesce(var.truster_config.email.verification_mode, "provider") != "disabled", false)
       ) || (
-      var.truster_config.email != null &&
       try(trimspace(var.truster_config.email.otp_secret_name) != "", false) &&
-      try(var.truster_config.email.smtp != null, false) &&
       try(contains([for minutes in range(1, 11) : timeadd("2000-01-01T00:00:00Z", "${minutes}m")], timeadd("2000-01-01T00:00:00Z", coalesce(var.truster_config.email.otp_ttl, "5m"))), false)
     )
-    error_message = "An email connector or provider/strict verification requires email configuration, a nonblank otp_secret_name, complete SMTP configuration, and otp_ttl equivalent to 1-10 whole minutes."
+    error_message = "Sending verification codes, for an email connector or provider/strict verification with SMTP, requires a nonblank otp_secret_name and otp_ttl equivalent to 1-10 whole minutes."
   }
 
   validation {

@@ -387,6 +387,44 @@ run "email_delivery_requires_smtp" {
   expect_failures = [var.truster_config]
 }
 
+run "provider_verification_without_smtp_is_valid" {
+  command = plan
+
+  variables {
+    truster_config = {
+      secrets = { signing_key_name = "/truster/signing" }
+      user_login_connectors = {
+        google = { type = "google", display_name = "Google", credentials_secret = "google" }
+      }
+      email         = {}
+      static_policy = { clients = { app = { redirect_uris = ["https://app.example/callback"] } } }
+    }
+  }
+}
+
+run "provider_verification_with_smtp_requires_otp_secret" {
+  command = plan
+
+  variables {
+    truster_config = {
+      secrets = { signing_key_name = "/truster/signing" }
+      user_login_connectors = {
+        google = { type = "google", display_name = "Google", credentials_secret = "google" }
+      }
+      email = {
+        smtp = {
+          host         = "smtp.example.com"
+          port         = 587
+          from_address = "auth@example.com"
+        }
+      }
+      static_policy = { clients = { app = { redirect_uris = ["https://app.example/callback"] } } }
+    }
+  }
+
+  expect_failures = [var.truster_config]
+}
+
 run "static_client_requires_redirects" {
   command = plan
 
